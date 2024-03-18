@@ -1,0 +1,40 @@
+{
+	"schemaVersion": 1,
+	"id": "ender-emblem",
+	"version": "${version}",
+	"name": "Ender Emblem",
+	"description": "An RPG Mod based off of the Fire Emblem series.",
+	"authors": [
+		"Mel"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "MIT",
+	"icon": "assets/ender-emblem/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"mel.enderemblem.EnderEmblem"
+		],
+		"client": [
+			"mel.enderemblem.EnderEmblemClient"
+		],
+		"fabric-datagen": [
+			"mel.enderemblem.EnderEmblemDataGenerator"
+		]
+	},
+	"mixins": [
+		"ender-emblem.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.15.7",
+		"minecraft": "~1.20.1",
+		"java": ">=17",
+		"fabric-api": "*"
+	},
+	"suggests": {
+		"another-mod": "*"
+	}
+}
