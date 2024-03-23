@@ -5,9 +5,12 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import net.fabricmc.api.ModInitializer;
 
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.minecraft.entity.attribute.EntityAttribute;
+import net.minecraft.entity.attribute.EntityAttributeInstance;
 import net.minecraft.entity.attribute.EntityAttributeModifier;
 import net.minecraft.entity.attribute.EntityAttributes;
+import net.minecraft.server.command.CommandManager;
 import net.minecraft.text.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,6 +34,15 @@ public class EnderEmblem implements ModInitializer {
 		// This code runs as soon as Minecraft is in a mod-load-ready state.
 		// However, some things (like resources) may still be uninitialized.
 		// Proceed with mild caution.
+		ServerPlayerEvents.COPY_FROM.register((oldPlayer, newPlayer, alive) -> {
+			EntityAttributeInstance oldPlayerMspeed = oldPlayer.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
+			EntityAttributeInstance newPlayerMspeed = newPlayer.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
+			if(!alive) {
+				newPlayerMspeed.setBaseValue(oldPlayerMspeed.getBaseValue());
+				newPlayer.getAbilities().setWalkSpeed((float)oldPlayerMspeed.getBaseValue());
+				newPlayer.sendAbilitiesUpdate();
+			}
+		});
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(literal("setSpeed")
 		.then(argument("value", IntegerArgumentType.integer()).executes(context -> {
 			final int value = IntegerArgumentType.getInteger(context, "value");
@@ -40,7 +52,9 @@ public class EnderEmblem implements ModInitializer {
 				((PlayerEntityMixinAccess)context.getSource().getPlayer()).setSpeed((float)value);
 				context.getSource().getPlayer().getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED)
 						.setBaseValue(0.10000000149011612*(value/100.0 + 0.6));
-				context.getSource().getPlayer().setMovementSpeed((float)(0.10000000149011612*(value/100.0 + 0.6)));
+				context.getSource().getPlayer().getAbilities().setWalkSpeed((float)context.getSource().getPlayer()
+						.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED).getBaseValue());
+				context.getSource().getPlayer().sendAbilitiesUpdate();
 				context.getSource().sendFeedback(() -> Text.literal("Speed: %s".formatted(((PlayerEntityMixinAccess)context
 					.getSource().getPlayer()).getSpeed())), false);
 				context.getSource().sendFeedback(() -> Text.literal("Set your Speed Stat to %s".formatted(value)), false);
