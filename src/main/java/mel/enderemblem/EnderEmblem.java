@@ -16,6 +16,7 @@ import net.minecraft.text.Text;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import static java.lang.Math.floor;
 import static net.minecraft.server.command.CommandManager.*;
 
 public class EnderEmblem implements ModInitializer {
@@ -26,6 +27,8 @@ public class EnderEmblem implements ModInitializer {
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
 	public interface PlayerEntityMixinAccess{
+		double getHealthStat();
+		void setHealthStat(double value);
 		double getSpeed();
 		void setSpeed(double value);
 	}
@@ -38,19 +41,49 @@ public class EnderEmblem implements ModInitializer {
 
 		//Keep stats after death & dimension changes
 		ServerPlayerEvents.COPY_FROM.register((oldPlayer, newPlayer, alive) -> {
+			EntityAttributeInstance oldPlayerMhealth = oldPlayer.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH);
+			EntityAttributeInstance newPlayerMhealth = newPlayer.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH);
 			EntityAttributeInstance oldPlayerMspeed = oldPlayer.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
 			EntityAttributeInstance newPlayerMspeed = newPlayer.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
+			((PlayerEntityMixinAccess)newPlayer).setHealthStat(((PlayerEntityMixinAccess)oldPlayer).getHealthStat());
+			newPlayerMhealth.setBaseValue(oldPlayerMhealth.getBaseValue());
+			newPlayer.setHealth(oldPlayer.getHealth());
 			((PlayerEntityMixinAccess)newPlayer).setSpeed(((PlayerEntityMixinAccess)oldPlayer).getSpeed());
 			newPlayerMspeed.setBaseValue(oldPlayerMspeed.getBaseValue());
 			newPlayer.getAbilities().setWalkSpeed(oldPlayer.getAbilities().getWalkSpeed());
 			newPlayer.sendAbilitiesUpdate();
 		});
 		ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
+			((PlayerEntityMixinAccess)newPlayer).setHealthStat(((PlayerEntityMixinAccess)oldPlayer).getHealthStat());
+			newPlayer.setHealth((float)((PlayerEntityMixinAccess)oldPlayer).getHealthStat());
 			newPlayer.getAbilities().setWalkSpeed(oldPlayer.getAbilities().getWalkSpeed());
 			newPlayer.sendAbilitiesUpdate();
 		});
 
-		//Set Stat & Get Stat Commands
+		//Set & Get Stat Commands
+		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(literal("setHealth")
+				.then(argument("value", IntegerArgumentType.integer()).executes(context -> {
+					final int value = IntegerArgumentType.getInteger(context, "value");
+					if(value < 0 || value > 100) {
+						context.getSource().sendFeedback(() -> Text.literal("Invalid Int. Must be between 0-100."), false);
+					}else {
+						((PlayerEntityMixinAccess)context.getSource().getPlayer()).setHealthStat(value);
+						context.getSource().getPlayer().getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH)
+								.setBaseValue(floor(40*(value/100.0)));
+						context.getSource().getPlayer().setHealth((float)floor(40*(value/100.0)));
+						context.getSource().sendFeedback(() -> Text.literal("Set your Max Health Stat to %s".formatted(value)), false);
+					}
+					return 1;
+				}))));
+		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(literal("getHealth")
+				.executes(context -> {
+					context.getSource().sendFeedback(() -> Text.literal("Max Health: %s, GMax Health: %s".formatted(
+							((PlayerEntityMixinAccess)context.getSource().getPlayer()).getHealthStat(),
+							context.getSource().getPlayer().getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH)
+									.getBaseValue())), false);
+					return 1;
+				})));
+
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(literal("setSpeed")
 		.then(argument("value", IntegerArgumentType.integer()).executes(context -> {
 			final int value = IntegerArgumentType.getInteger(context, "value");
@@ -63,15 +96,13 @@ public class EnderEmblem implements ModInitializer {
 				context.getSource().getPlayer().getAbilities().setWalkSpeed((float)context.getSource().getPlayer()
 						.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED).getBaseValue());
 				context.getSource().getPlayer().sendAbilitiesUpdate();
-				context.getSource().sendFeedback(() -> Text.literal("Speed: %s".formatted(((PlayerEntityMixinAccess)context
-					.getSource().getPlayer()).getSpeed())), false);
 				context.getSource().sendFeedback(() -> Text.literal("Set your Speed Stat to %s".formatted(value)), false);
 			}
 			return 1;
 		}))));
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(literal("getSpeed")
 				.executes(context -> {
-					context.getSource().sendFeedback(() -> Text.literal("Speed: %s, MSpeed: %s, WSpeed: %s".formatted(
+					context.getSource().sendFeedback(() -> Text.literal("Speed: %s, GMSpeed: %s, WSpeed: %s".formatted(
 							((PlayerEntityMixinAccess)context.getSource().getPlayer()).getSpeed(),
 							context.getSource().getPlayer().getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED)
 									.getBaseValue(), context.getSource().getPlayer().getAbilities().getWalkSpeed())), false);

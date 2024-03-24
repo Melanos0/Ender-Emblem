@@ -31,7 +31,7 @@ public abstract class PlayerEntityMixin extends LivingEntity implements EnderEmb
     protected PlayerEntityMixin(EntityType<? extends LivingEntity> entityType, World world) {
         super(entityType, world);
     }
-    private float maxHealth = 25.0F;
+    private double maxHealth = 25.0;
     private float strength = 33.0F;
     private float magic = 33.0F;
     private float defense = 33.0F;
@@ -43,11 +43,13 @@ public abstract class PlayerEntityMixin extends LivingEntity implements EnderEmb
     @Shadow
     public abstract PlayerAbilities getAbilities();
 
+    public double getHealthStat(){return this.maxHealth;}
+    public void setHealthStat(double value){this.maxHealth = value;}
     public double getSpeed(){return this.speed;}
     public void setSpeed(double value){this.speed = value;}
     @Inject(at = @At(value = "TAIL"), method = "writeCustomDataToNbt")
     public void writeCustomDataToNbt(NbtCompound nbt, CallbackInfo info) {
-        nbt.putFloat("HP", this.maxHealth);
+        nbt.putDouble("HP", this.maxHealth);
         nbt.putFloat("Str", this.strength);
         nbt.putFloat("Mag", this.magic);
         nbt.putFloat("Def", this.defense);
@@ -58,7 +60,7 @@ public abstract class PlayerEntityMixin extends LivingEntity implements EnderEmb
     }
     @Inject(at=@At(value = "TAIL"), method = "readCustomDataFromNbt")
     public void readCustomDataFromNbt(NbtCompound nbt, CallbackInfo info) {
-        this.maxHealth = nbt.getFloat("HP");
+        this.maxHealth = nbt.getDouble("HP");
         this.strength = nbt.getFloat("Str");
         this.magic = nbt.getFloat("Mag");
         this.defense = nbt.getFloat("Def");
