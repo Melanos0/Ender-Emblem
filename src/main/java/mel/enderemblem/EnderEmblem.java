@@ -29,6 +29,8 @@ public class EnderEmblem implements ModInitializer {
 	public interface PlayerEntityMixinAccess{
 		double getHealthStat();
 		void setHealthStat(double value);
+		double getStrength();
+		void setStrength(double value);
 		double getSpeed();
 		void setSpeed(double value);
 	}
@@ -43,11 +45,15 @@ public class EnderEmblem implements ModInitializer {
 		ServerPlayerEvents.COPY_FROM.register((oldPlayer, newPlayer, alive) -> {
 			EntityAttributeInstance oldPlayerMhealth = oldPlayer.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH);
 			EntityAttributeInstance newPlayerMhealth = newPlayer.getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH);
+			EntityAttributeInstance oldPlayerStrength = oldPlayer.getAttributeInstance(EntityAttributes.GENERIC_ATTACK_DAMAGE);
+			EntityAttributeInstance newPlayerStrength = newPlayer.getAttributeInstance(EntityAttributes.GENERIC_ATTACK_DAMAGE);
 			EntityAttributeInstance oldPlayerMspeed = oldPlayer.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
 			EntityAttributeInstance newPlayerMspeed = newPlayer.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
 			((PlayerEntityMixinAccess)newPlayer).setHealthStat(((PlayerEntityMixinAccess)oldPlayer).getHealthStat());
 			newPlayerMhealth.setBaseValue(oldPlayerMhealth.getBaseValue());
 			newPlayer.setHealth(oldPlayer.getHealth());
+			newPlayerStrength.setBaseValue(oldPlayerStrength.getBaseValue());
+			((PlayerEntityMixinAccess)newPlayer).setStrength(((PlayerEntityMixinAccess)oldPlayer).getStrength());
 			((PlayerEntityMixinAccess)newPlayer).setSpeed(((PlayerEntityMixinAccess)oldPlayer).getSpeed());
 			newPlayerMspeed.setBaseValue(oldPlayerMspeed.getBaseValue());
 			newPlayer.getAbilities().setWalkSpeed(oldPlayer.getAbilities().getWalkSpeed());
@@ -80,6 +86,28 @@ public class EnderEmblem implements ModInitializer {
 					context.getSource().sendFeedback(() -> Text.literal("Max Health: %s, GMax Health: %s".formatted(
 							((PlayerEntityMixinAccess)context.getSource().getPlayer()).getHealthStat(),
 							context.getSource().getPlayer().getAttributeInstance(EntityAttributes.GENERIC_MAX_HEALTH)
+									.getBaseValue())), false);
+					return 1;
+				})));
+
+		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(literal("setStrength")
+				.then(argument("value", IntegerArgumentType.integer()).executes(context -> {
+					final int value = IntegerArgumentType.getInteger(context, "value");
+					if(value < 0 || value > 100) {
+						context.getSource().sendFeedback(() -> Text.literal("Invalid Int. Must be between 0-100."), false);
+					}else {
+						((PlayerEntityMixinAccess)context.getSource().getPlayer()).setStrength(value);
+						context.getSource().getPlayer().getAttributeInstance(EntityAttributes.GENERIC_ATTACK_DAMAGE)
+								.setBaseValue(3*(value/100.0));
+						context.getSource().sendFeedback(() -> Text.literal("Set your Strength Stat to %s".formatted(value)), false);
+					}
+					return 1;
+				}))));
+		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(literal("getStrength")
+				.executes(context -> {
+					context.getSource().sendFeedback(() -> Text.literal("Strength: %s, GStrength: %s".formatted(
+							((PlayerEntityMixinAccess)context.getSource().getPlayer()).getStrength(),
+							context.getSource().getPlayer().getAttributeInstance(EntityAttributes.GENERIC_ATTACK_DAMAGE)
 									.getBaseValue())), false);
 					return 1;
 				})));
