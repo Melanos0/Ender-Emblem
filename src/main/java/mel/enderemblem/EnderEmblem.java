@@ -2,6 +2,7 @@ package mel.enderemblem;
 
 import com.google.common.collect.ImmutableMultimap;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import mel.enderemblem.mixin.PlayerEntityMixin;
 import net.fabricmc.api.ModInitializer;
 
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -34,22 +35,28 @@ public class EnderEmblem implements ModInitializer {
 		// This code runs as soon as Minecraft is in a mod-load-ready state.
 		// However, some things (like resources) may still be uninitialized.
 		// Proceed with mild caution.
+
+		//Keep stats after death & dimension changes
 		ServerPlayerEvents.COPY_FROM.register((oldPlayer, newPlayer, alive) -> {
 			EntityAttributeInstance oldPlayerMspeed = oldPlayer.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
 			EntityAttributeInstance newPlayerMspeed = newPlayer.getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED);
-			if(!alive) {
-				newPlayerMspeed.setBaseValue(oldPlayerMspeed.getBaseValue());
-				newPlayer.getAbilities().setWalkSpeed((float)oldPlayerMspeed.getBaseValue());
-				newPlayer.sendAbilitiesUpdate();
-			}
+			((PlayerEntityMixinAccess)newPlayer).setSpeed(((PlayerEntityMixinAccess)oldPlayer).getSpeed());
+			newPlayerMspeed.setBaseValue(oldPlayerMspeed.getBaseValue());
+			newPlayer.getAbilities().setWalkSpeed(oldPlayer.getAbilities().getWalkSpeed());
+			newPlayer.sendAbilitiesUpdate();
 		});
+		ServerPlayerEvents.AFTER_RESPAWN.register((oldPlayer, newPlayer, alive) -> {
+			newPlayer.getAbilities().setWalkSpeed(oldPlayer.getAbilities().getWalkSpeed());
+			newPlayer.sendAbilitiesUpdate();
+		});
+		//Set Stat Commands
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(literal("setSpeed")
 		.then(argument("value", IntegerArgumentType.integer()).executes(context -> {
 			final int value = IntegerArgumentType.getInteger(context, "value");
 			if(value < 0 || value > 100) {
 				context.getSource().sendFeedback(() -> Text.literal("Invalid Int. Must be between 0-100."), false);
 			}else {
-				((PlayerEntityMixinAccess)context.getSource().getPlayer()).setSpeed((float)value);
+				((PlayerEntityMixinAccess)context.getSource().getPlayer()).setSpeed(value);
 				context.getSource().getPlayer().getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED)
 						.setBaseValue(0.10000000149011612*(value/100.0 + 0.6));
 				context.getSource().getPlayer().getAbilities().setWalkSpeed((float)context.getSource().getPlayer()
@@ -61,6 +68,15 @@ public class EnderEmblem implements ModInitializer {
 			}
 			return 1;
 		}))));
+		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(literal("getSpeed")
+				.executes(context -> {
+					context.getSource().sendFeedback(() -> Text.literal("Speed: %s, MSpeed: %s, WSpeed: %s".formatted(
+							((PlayerEntityMixinAccess)context.getSource().getPlayer()).getSpeed(),
+							context.getSource().getPlayer().getAttributeInstance(EntityAttributes.GENERIC_MOVEMENT_SPEED)
+									.getBaseValue(), context.getSource().getPlayer().getAbilities().getWalkSpeed())), false);
+					return 1;
+				})));
+
 		LOGGER.info("Pissing all by yourself handsome?");
 	}
 }
