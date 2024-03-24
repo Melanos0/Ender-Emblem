@@ -49,7 +49,8 @@ public class EnderEmblem implements ModInitializer {
 			newPlayer.getAbilities().setWalkSpeed(oldPlayer.getAbilities().getWalkSpeed());
 			newPlayer.sendAbilitiesUpdate();
 		});
-		//Set Stat Commands
+
+		//Set Stat & Get Stat Commands
 		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> dispatcher.register(literal("setSpeed")
 		.then(argument("value", IntegerArgumentType.integer()).executes(context -> {
 			final int value = IntegerArgumentType.getInteger(context, "value");
